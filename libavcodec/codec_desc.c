@@ -3100,6 +3100,12 @@ static const AVCodecDescriptor codec_descriptors[] = {
         .name      = "scte_35",
         .long_name = NULL_IF_CONFIG_SMALL("SCTE 35 Message Queue"),
     },
+    {
+        .id        = AV_CODEC_ID_CAMERA_MOTION_METADATA,
+        .type      = AVMEDIA_TYPE_DATA,
+        .name      = "camm",
+        .long_name = NULL_IF_CONFIG_SMALL("camera motion metadata"),
+    },
 
     /* deprecated codec ids */
 };
