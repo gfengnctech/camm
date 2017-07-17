@@ -203,7 +203,8 @@ static int write_camm_packet_data(AVFormatContext *oc, OutputStream *ost)
     return 1;
   }
   pkt.pts = ost->next_pts;
-  pkt.duration = 0;
+  pkt.flags = AV_PKT_FLAG_KEY;
+  pkt.duration = 1;
   pkt.dts = pkt.pts;
   ost->next_pts += 1;
   packet_type = ost->current_packet_type++ % 8;
