@@ -84,10 +84,10 @@ static int open_codec_context(int *stream_idx,
 static void write_2_longs(FILE *f, void *data, const char *name1, const char *name2) {
     fputs(name1, f);
     fputs(": ", f);
-    fprintf(f, "%" PRId64 " ", AV_RB64(data));
+    fprintf(f, "%" PRId64 " ", AV_RL64(data));
     fputs(name2, f);
     fputs(": ", f);
-    fprintf(f, "%" PRId64 "\n", AV_RB64(((uint32_t*)data) + 2));
+    fprintf(f, "%" PRId64 "\n", AV_RL64(((uint32_t*)data) + 2));
 }
 
 static void write_3_floats(FILE *file, void *data, ...) {
@@ -99,7 +99,7 @@ static void write_3_floats(FILE *file, void *data, ...) {
     for (j = 0; j < 3; ++j) {
         fputs(va_arg(valist, const char*), file);
         fprintf(file, "[%d]: ", j);
-        i = AV_RB32(((uint32_t*)data) + j);
+        i = AV_RL32(((uint32_t*)data) + j);
         memcpy(&f, &i, 4);
         fprintf(file, "%f ", f);
     }
@@ -108,18 +108,18 @@ static void write_3_floats(FILE *file, void *data, ...) {
 }
 
 static void read_double(void **data, double *d) {
-    uint64_t i = AV_RB64(*data);
+    uint64_t i = AV_RL64(*data);
     memcpy(d, &i, 8);
     *data = ((uint32_t*)(*data)) + 2;
 }
 
 static void read_uint32(void **data, uint32_t *i) {
-    *i = AV_RB32(*data);
+    *i = AV_RL32(*data);
     *data = ((uint32_t*)(*data)) + 1;
 }
 
 static void read_float(void **data, float *f) {
-    uint32_t i = AV_RB32(*data);
+    uint32_t i = AV_RL32(*data);
     memcpy(f, &i, 4);
     *data = ((uint32_t*)(*data)) + 1;
 }
@@ -254,7 +254,7 @@ int main (int argc, char **argv)
                        "file contents are formatted incorrectly\n");
                 exit(1);
             }
-            pkt_type = AV_RB16(((uint16_t*)pkt.data) + 1);
+            pkt_type = AV_RL16(((uint16_t*)pkt.data) + 1);
             av_log(NULL, AV_LOG_INFO, "camm_frame_n:%d pkt_size: %d pkt_type: %d\n", camm_frame_count++, pkt.size, pkt_type);
             camm_data = (void*)(((uint32_t*)pkt.data) + 1);
             switch (pkt_type) {
