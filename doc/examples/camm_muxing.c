@@ -231,9 +231,9 @@ static int write_camm_packet_data(AVFormatContext *oc, OutputStream *ost)
       break;
     case 5:
       AV_WL32(camm_data, /* latitude in degrees */
-              double_to_bytes(37.454356 + .001 * ost->current_packet_type));
+              float_to_bytes(37.454356 + .001 * ost->current_packet_type));
       AV_WL32(camm_data + 2, /* longitude in degrees */
-              double_to_bytes(-122.167477 + .001 * ost->current_packet_type));
+              float_to_bytes(-122.167477 + .001 * ost->current_packet_type));
       AV_WL32(camm_data + 4, /* altitude in meters */ 0);
       break;
     case 6:
