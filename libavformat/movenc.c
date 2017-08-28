@@ -5921,10 +5921,10 @@ static int mov_init(AVFormatContext *s)
                 while(track->timescale < 10000)
                     track->timescale *= 2;
             }
-            if (st->codecpar->width > 65535 || st->codecpar->height > 65535) {
-                av_log(s, AV_LOG_ERROR, "Resolution %dx%d too large for mov/mp4\n", st->codecpar->width, st->codecpar->height);
-                return AVERROR(EINVAL);
-            }
+            //if (st->codecpar->width > 65535 || st->codecpar->height > 65535) {
+            //    av_log(s, AV_LOG_ERROR, "Resolution %dx%d too large for mov/mp4\n", st->codecpar->width, st->codecpar->height);
+            //    return AVERROR(EINVAL);
+            //}
             if (track->mode == MODE_MOV && track->timescale > 100000)
                 av_log(s, AV_LOG_WARNING,
                        "WARNING codec timebase is very high. If duration is too long,\n"

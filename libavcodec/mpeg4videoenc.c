@@ -1274,10 +1274,10 @@ static av_cold int encode_init(AVCodecContext *avctx)
     int ret;
     static int done = 0;
 
-    if (avctx->width >= (1<<13) || avctx->height >= (1<<13)) {
-        av_log(avctx, AV_LOG_ERROR, "dimensions too large for MPEG-4\n");
-        return AVERROR(EINVAL);
-    }
+    //if (avctx->width >= (1<<13) || avctx->height >= (1<<13)) {
+    //    av_log(avctx, AV_LOG_ERROR, "dimensions too large for MPEG-4\n");
+    //    return AVERROR(EINVAL);
+    //}
 
     if ((ret = ff_mpv_encode_init(avctx)) < 0)
         return ret;
