@@ -21,7 +21,7 @@ OpenCV_Libs=    /usr/local/share/OpenCV/3rdparty/lib/libippicv.a \
 		/usr/lib/x86_64-linux-gnu/libjbig.a \
 
 
-CFLAGS += -Wall -g
+CFLAGS += -Wall -g 
 CFLAGS := $(shell pkg-config --cflags $(FFMPEG_LIBS)) $(CFLAGS)
 LDLIBS := $(shell pkg-config --libs $(FFMPEG_LIBS)) $(LDLIBS) $(OpenCV_Libs)
 EXAMPLES=       avio_dir_cmd                       \

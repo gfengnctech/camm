@@ -21,11 +21,13 @@
  */
 
 #include <inttypes.h>
-#include <libavutil/intreadwrite.h>
-#include <libavutil/imgutils.h>
-#include <libavutil/samplefmt.h>
-#include <libavutil/timestamp.h>
-#include <libavformat/avformat.h>
+extern "C"{
+    #include <libavutil/intreadwrite.h>
+    #include <libavutil/imgutils.h>
+    #include <libavutil/samplefmt.h>
+    #include <libavutil/timestamp.h>
+    #include <libavformat/avformat.h>
+}
 #include <stdarg.h>
 
 static int open_codec_context(int *stream_idx,
@@ -33,8 +35,7 @@ static int open_codec_context(int *stream_idx,
                               AVFormatContext *fmt_ctx,
                               enum AVMediaType type,
                               const char *src_filename,
-                              int find_decoder)
-{
+                              int find_decoder) {
     int ret, stream_index;
     AVStream *st;
     AVCodec *dec = NULL;
@@ -124,8 +125,7 @@ static void read_float(void **data, float *f) {
     *data = ((uint32_t*)(*data)) + 1;
 }
 
-int main (int argc, char **argv)
-{
+int main (int argc, char **argv) {
     int ret = 0;
     AVFormatContext *fmt_ctx = NULL;
     AVCodecContext *video_dec_ctx = NULL;
@@ -235,7 +235,7 @@ int main (int argc, char **argv)
                             "new: width = %d, height = %d, format = %s\n",
                             width, height, av_get_pix_fmt_name(pix_fmt),
                             frame->width, frame->height,
-                            av_get_pix_fmt_name(frame->format));
+                            av_get_pix_fmt_name((enum AVPixelFormat)frame->format));
                         exit(1);
                     }
                     av_log(NULL, AV_LOG_INFO, "video_frame_n:%d coded_n:%d\n", video_frame_count++, frame->coded_picture_number);
@@ -257,54 +257,40 @@ int main (int argc, char **argv)
             pkt_type = AV_RL16(((uint16_t*)pkt.data) + 1);
             av_log(NULL, AV_LOG_INFO, "camm_frame_n:%d pkt_size: %d pkt_type: %d\n", camm_frame_count++, pkt.size, pkt_type);
             camm_data = (void*)(((uint32_t*)pkt.data) + 1);
-            switch (pkt_type) {
-                case 0:
-                    write_3_floats(camm_dst_file, camm_data, "angle_axis", "angle_axis", "angle_axis");
-                    break;
-                case 1:
-                    write_2_longs(camm_dst_file, camm_data, "pixel_exposure_time", "rolling_shutter_skew_time");
-                    break;
-                case 2:
-                    write_3_floats(camm_dst_file, camm_data, "gyro", "gyro", "gyro");
-                    break;
-                case 3:
-                    write_3_floats(camm_dst_file, camm_data, "acc", "acc", "acc");
-                    break;
-                case 4:
-                    write_3_floats(camm_dst_file, camm_data, "position", "position", "position");
-                    break;
-                case 5:
-                    write_3_floats(camm_dst_file, camm_data, "latitude", "longitude", "altitude");
-                    break;
-                case 6:
-                    read_double(&camm_data, &d1);
-                    read_uint32(&camm_data, &gps_fix_type);
-                    read_double(&camm_data, &d2);
-                    read_double(&camm_data, &d3);
-                    read_float(&camm_data, &f1);
-                    read_float(&camm_data, &f2);
-                    read_float(&camm_data, &f3);
-                    read_float(&camm_data, &f4);
-                    read_float(&camm_data, &f5);
-                    read_float(&camm_data, &f6);
-                    read_float(&camm_data, &f7);
-                    fprintf(camm_dst_file,
-                            "time_gps_epoch: %f gps_fix_type: %d latitude: %f "
-                            "longitude: %f altitude: %f "
-                            "horizontal_accuracy: %f vertical_accuracy: %f "
-                            "vertical_east: %f vertical_north: %f "
-                            "vertical_up: %f speed_accuracy: %f\n", d1,
-                            gps_fix_type, d2, d3, f1, f2, f3, f4, f5, f6, f7);
-                    break;
-                case 7:
-                    write_3_floats(camm_dst_file, camm_data, "magnetic_field", "magnetic_field", "magnetic_field");
-                    break;
-                default:
-                    av_log(NULL, AV_LOG_ERROR,
-                           "There is a camm packet with invalid type:%d\n",
-                           pkt_type);
-                    exit(1);
-            }
+
+            write_3_floats(camm_dst_file, camm_data, "angle_axis", "angle_axis", "angle_axis");
+
+            write_2_longs(camm_dst_file, camm_data, "pixel_exposure_time", "rolling_shutter_skew_time");
+
+            write_3_floats(camm_dst_file, camm_data, "gyro", "gyro", "gyro");
+
+            write_3_floats(camm_dst_file, camm_data, "acc", "acc", "acc");
+
+            write_3_floats(camm_dst_file, camm_data, "position", "position", "position");
+
+            write_3_floats(camm_dst_file, camm_data, "latitude", "longitude", "altitude");
+
+            read_double(&camm_data, &d1);
+            read_uint32(&camm_data, &gps_fix_type);
+            read_double(&camm_data, &d2);
+            read_double(&camm_data, &d3);
+            read_float(&camm_data, &f1);
+            read_float(&camm_data, &f2);
+            read_float(&camm_data, &f3);
+            read_float(&camm_data, &f4);
+            read_float(&camm_data, &f5);
+            read_float(&camm_data, &f6);
+            read_float(&camm_data, &f7);
+            fprintf(camm_dst_file,
+                    "time_gps_epoch: %f gps_fix_type: %d latitude: %f "
+                    "longitude: %f altitude: %f "
+                    "horizontal_accuracy: %f vertical_accuracy: %f "
+                    "vertical_east: %f vertical_north: %f "
+                    "vertical_up: %f speed_accuracy: %f\n", d1,
+                    gps_fix_type, d2, d3, f1, f2, f3, f4, f5, f6, f7);
+
+            write_3_floats(camm_dst_file, camm_data, "magnetic_field", "magnetic_field", "magnetic_field");
+
         } else {
             av_log(NULL, AV_LOG_ERROR, "There is a packet from an unrecognized stream.\n");
         }

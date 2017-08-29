@@ -34,17 +34,18 @@
 #include <unistd.h>
 
 extern "C" {
-#include <libavformat/avformat.h>
-#include <libavutil/avassert.h>
-#include <libavutil/channel_layout.h>
-#include <libavutil/intreadwrite.h>
-#include <libavutil/mathematics.h>
-#include <libavutil/opt.h>
-#include <libavutil/timestamp.h>
-#include <libswresample/swresample.h>
-#include <libswscale/swscale.h>
-#include <libavutil/imgutils.h>
-#include <libavcodec/avcodec.h>
+    #include <libavformat/avformat.h>
+    #include <libavutil/avassert.h>
+    #include <libavutil/channel_layout.h>
+    #include <libavutil/intreadwrite.h>
+    #include <libavutil/mathematics.h>
+    #include <libavutil/opt.h>
+    #include <libavutil/timestamp.h>
+    #include <libswresample/swresample.h>
+    #include <libswscale/swscale.h>
+    #include <libavutil/imgutils.h>
+    #include <libavcodec/avcodec.h>
+    #include <libavformat/avformat.h>
 };
 
 #include <opencv2/opencv.hpp>
@@ -143,8 +144,7 @@ static int write_packet(AVFormatContext *fmt_ctx, const AVRational *time_base,
 }
 
 static void add_video_stream(OutputStream *ost, AVFormatContext *oc,
-        AVCodec **codec,
-        enum AVCodecID codec_id, const int width, const int height) {
+        AVCodec **codec, enum AVCodecID codec_id, const int width, const int height) {
     AVCodecContext *c;
 
     *codec = avcodec_find_encoder(codec_id);
@@ -193,8 +193,7 @@ static void add_camm_stream(OutputStream *ost, AVFormatContext *oc) {
     ost->st->time_base = (AVRational){1, STREAM_FRAME_RATE};
     ost->time_base = (AVRational){1, STREAM_FRAME_RATE};
     ost->next_pts = 0;
-    ost->tmp_data =
-            (uint16_t*) av_malloc(get_camera_metadata_motion_data_size());
+    ost->tmp_data = (uint16_t*) av_malloc(get_camera_metadata_motion_data_size());
     if (ost->tmp_data == NULL) {
         av_log(NULL, AV_LOG_ERROR, "Could not allocate memory for CAMM data buffer.\n");
         exit(1);
@@ -223,11 +222,11 @@ static int write_camm_packet_data(AVFormatContext *oc, OutputStream *ost) {
 
     av_init_packet(&pkt);
     if (av_compare_ts(ost->next_pts, ost->time_base,
-            STREAM_DURATION, (AVRational) {
-            1, 1 }) >= 0) {
-    av_log(NULL, AV_LOG_INFO, "Finished writing camm stream.\n");
-    return 1;
-}
+            STREAM_DURATION, (AVRational) { 1, 1 }) >= 0) {
+        av_log(NULL, AV_LOG_INFO, "Finished writing camm stream.\n");
+        return 1;
+    }
+            
     pkt.pts = ost->next_pts;
     pkt.flags = AV_PKT_FLAG_KEY;
     pkt.duration = 1;
@@ -239,84 +238,67 @@ static int write_camm_packet_data(AVFormatContext *oc, OutputStream *ost) {
     pkt.data = (uint8_t*) ost->tmp_data;
     AV_WL16(ost->tmp_data + 1, packet_type);
     camm_data = ost->tmp_data + 2;
-    switch (packet_type) {
-        case 0:
-            AV_WL32(camm_data, /* X angle axis */ float_to_bytes(M_PI / 2));
-            AV_WL32(camm_data + 2, /* Y angle axis */ float_to_bytes(-M_PI / 2));
-            AV_WL32(camm_data + 4, /* Z angle axis */
-                    float_to_bytes(fmod(ost->current_packet_type * M_PI / 20,
+
+    srand((unsigned)time(NULL));
+    int random = (int)(rand())/10;
+    
+    AV_WL32(camm_data, /* X angle axis */ float_to_bytes(random * M_PI / 2));
+    AV_WL32(camm_data + 2, /* Y angle axis */ float_to_bytes(-M_PI / 2));
+    AV_WL32(camm_data + 4, /* Z angle axis */
+                    float_to_bytes(fmod(ost->current_packet_type * random * M_PI / 20,
                     2 * M_PI) - M_PI));
-            break;
-        case 1:
-            AV_WL64(camm_data, /* Pixel exposure time in nanoseconds */ 500);
-            AV_WL64(camm_data + 4,
-                    /* Rolling shutter skew time in nanoseconds */ 300);
-            break;
-        case 2:
-            AV_WL32(camm_data, /* X gyro */ float_to_bytes(M_PI / 20));
-            AV_WL32(camm_data + 2, /* Y gyro */ float_to_bytes(2 * M_PI / 20));
-            AV_WL32(camm_data + 4, /* Z gyro */ float_to_bytes(3 * M_PI / 20));
-            break;
-        case 3:
-            AV_WL32(camm_data, /* X acceleration */ float_to_bytes(0.1));
-            AV_WL32(camm_data + 2, /* Y acceleration */ float_to_bytes(0.2));
-            AV_WL32(camm_data + 4, /* Z acceleration */ float_to_bytes(0.3));
-            break;
-        case 4:
-            AV_WL32(camm_data, /* X position */ 0);
-            AV_WL32(camm_data + 2, /* Y position */ 0);
-            AV_WL32(camm_data + 4, /* Z position */ 0);
-            break;
-        case 5:
-            AV_WL32(camm_data, /* latitude in degrees */
-                    float_to_bytes(37.454356 + .001 * ost->current_packet_type));
-            AV_WL32(camm_data + 2, /* longitude in degrees */
-                    float_to_bytes(-122.167477 + .001 * ost->current_packet_type));
-            AV_WL32(camm_data + 4, /* altitude in meters */ 0);
-            break;
-        case 6:
-            AV_WL64(camm_data, /* time GPS epoch in seconds */
-                    double_to_bytes(1500507374.825
+
+    AV_WL64(camm_data, /* Pixel exposure time in nanoseconds */ 500);
+    AV_WL64(camm_data + 4, /* Rolling shutter skew time in nanoseconds */ 300);
+ 
+    AV_WL32(camm_data, /* X gyro */ float_to_bytes(M_PI / 20));
+    AV_WL32(camm_data + 2, /* Y gyro */ float_to_bytes(2 * random * M_PI / 20));
+    AV_WL32(camm_data + 4, /* Z gyro */ float_to_bytes(3 * random * M_PI / 20));
+
+    AV_WL32(camm_data, /* X acceleration */ float_to_bytes(0.1));
+    AV_WL32(camm_data + 2, /* Y acceleration */ float_to_bytes(0.2));
+    AV_WL32(camm_data + 4, /* Z acceleration */ float_to_bytes(0.3));
+
+    AV_WL32(camm_data, /* X position */ 0);
+    AV_WL32(camm_data + 2, /* Y position */ 0);
+    AV_WL32(camm_data + 4, /* Z position */ 0);
+
+    AV_WL32(camm_data, /* latitude in degrees */ float_to_bytes(37.454356 + .001 * ost->current_packet_type));
+    AV_WL32(camm_data + 2, /* longitude in degrees */ float_to_bytes(-122.167477 + .001 * ost->current_packet_type));
+    AV_WL32(camm_data + 4, /* altitude in meters */ 0);
+
+    AV_WL64(camm_data, /* time GPS epoch in seconds */ double_to_bytes(1500507374.825
                     + ((double) 1) / STREAM_FRAME_RATE));
-            camm_data = (uint16_t*) (((double*) camm_data) + 1);
-            AV_WL32(camm_data, /* GPS fix type */ 0);
-            camm_data = (uint16_t*) (((int32_t*) camm_data) + 1);
-            AV_WL64(camm_data, /* latitude in degrees */
-                    double_to_bytes(37.454356 + .001 * ost->current_packet_type));
-            camm_data = (uint16_t*) (((double*) camm_data) + 1);
-            AV_WL64(camm_data, /* longitude in degrees */
-                    double_to_bytes(-122.167477 + .001 * ost->current_packet_type));
-            camm_data = (uint16_t*) (((double*) camm_data) + 1);
-            AV_WL32(camm_data, /* altitude in meters */ 0);
-            camm_data = (uint16_t*) (((float*) camm_data) + 1);
-            AV_WL32(camm_data,
-                    /* horizontal accuracy in meters */ float_to_bytes(7.5));
-            camm_data = (uint16_t*) (((float*) camm_data) + 1);
-            AV_WL32(camm_data,
-                    /* vertical accuracy in meters */ float_to_bytes(10.5));
-            camm_data = (uint16_t*) (((float*) camm_data) + 1);
-            AV_WL32(camm_data,
-                    /* vertical east velocity in m/s */ float_to_bytes(1.1));
-            camm_data = (uint16_t*) (((float*) camm_data) + 1);
-            AV_WL32(camm_data,
-                    /* vertical north velocity in m/s */ float_to_bytes(1.1));
-            camm_data = (uint16_t*) (((float*) camm_data) + 1);
-            AV_WL32(camm_data, /* vertical up velocity in m/s */ 0);
-            camm_data = (uint16_t*) (((float*) camm_data) + 1);
-            AV_WL32(camm_data, /* speed accuracy in m/s */ float_to_bytes(2.5));
-            break;
-        case 7:
-            AV_WL32(camm_data, /* X magnetic field in micro teslas */ float_to_bytes(0.01));
-            AV_WL32(camm_data + 2, /* Y magnetic field in micro teslas */ float_to_bytes(0.01));
-            AV_WL32(camm_data + 4, /* Z magnetic field in micro teslas */ float_to_bytes(0.01));
-            break;
-        default:
-            break;
-    }
+    camm_data = (uint16_t*) (((double*) camm_data) + 1);
+    AV_WL32(camm_data, /* GPS fix type */ 0);
+    camm_data = (uint16_t*) (((int32_t*) camm_data) + 1);
+    AV_WL64(camm_data, /* latitude in degrees */ double_to_bytes(37.454356 + .001 * ost->current_packet_type));
+    camm_data = (uint16_t*) (((double*) camm_data) + 1);
+    AV_WL64(camm_data, /* longitude in degrees */ double_to_bytes(-122.167477 + .001 * ost->current_packet_type));
+    camm_data = (uint16_t*) (((double*) camm_data) + 1);
+    AV_WL32(camm_data, /* altitude in meters */ 0);
+    camm_data = (uint16_t*) (((float*) camm_data) + 1);
+    AV_WL32(camm_data, /* horizontal accuracy in meters */ float_to_bytes(7.5));
+    camm_data = (uint16_t*) (((float*) camm_data) + 1);
+    AV_WL32(camm_data, /* vertical accuracy in meters */ float_to_bytes(10.5));
+    camm_data = (uint16_t*) (((float*) camm_data) + 1);
+    AV_WL32(camm_data, /* vertical east velocity in m/s */ float_to_bytes(1.1));
+    camm_data = (uint16_t*) (((float*) camm_data) + 1);
+    AV_WL32(camm_data, /* vertical north velocity in m/s */ float_to_bytes(1.1));
+    camm_data = (uint16_t*) (((float*) camm_data) + 1);
+    AV_WL32(camm_data, /* vertical up velocity in m/s */ 0);
+    camm_data = (uint16_t*) (((float*) camm_data) + 1);
+    AV_WL32(camm_data, /* speed accuracy in m/s */ float_to_bytes(2.5));
+
+    AV_WL32(camm_data, /* X magnetic field in micro teslas */ float_to_bytes(0.01));
+    AV_WL32(camm_data + 2, /* Y magnetic field in micro teslas */ float_to_bytes(0.01));
+    AV_WL32(camm_data + 4, /* Z magnetic field in micro teslas */ float_to_bytes(0.01));
+
     if ((ret = write_packet(oc, &ost->time_base, ost->st, &pkt)) < 0) {
         av_log(NULL, AV_LOG_ERROR, "Error while writing camm data: %s\n", av_err2str(ret));
         exit(1);
     }
+           
     return 0;
 }
 
@@ -357,8 +339,8 @@ static void open_video_codec(AVFormatContext *oc, AVCodec *codec,
         exit(1);
     }
     ost->tmp_frame = NULL;
-    if (c->pix_fmt != AV_PIX_FMT_YUV420P) {
-        ost->tmp_frame = alloc_picture(AV_PIX_FMT_YUV420P, c->width, c->height);
+    if (c->pix_fmt != STREAM_PIX_FMT) {
+        ost->tmp_frame = alloc_picture(STREAM_PIX_FMT, c->width, c->height);
         if (!ost->tmp_frame) {
             av_log(NULL, AV_LOG_ERROR, "Could not allocate temporary picture\n");
             exit(1);
@@ -386,7 +368,7 @@ static char * getSequenceFileName(int seq){
     sprintf(imageFileName, file_fmt, seq);
     
     if (access(imageFileName, F_OK) == -1) {
-        av_log(NULL, AV_LOG_ERROR, "file doesn't exist", imageFileName, "\n");
+        av_log(NULL, AV_LOG_ERROR, "file doesn't exist %s\n", imageFileName);
         
         free(file_fmt);
         free(imageFileName);
@@ -399,53 +381,50 @@ static char * getSequenceFileName(int seq){
     return imageFileName;
 }
 
-static void writeJpg(AVFrame* frame, int width, int height) {
-        struct jpeg_compress_struct cinfo;
+static void writeJpg(char * szFilename, AVFrame* frame, int width, int height) {
+    struct jpeg_compress_struct cinfo;
 
-	struct jpeg_error_mgr jerr;
+    struct jpeg_error_mgr jerr;
 
-	char * szFilename="writeback.jpg";
-	int row_stride;
+    int row_stride;
 
-	FILE *fp;
+    FILE *fp;
 
-	JSAMPROW row_pointer[1];   // A bitmap
+    JSAMPROW row_pointer[1];   // A bitmap
 
-	cinfo.err = jpeg_std_error(&jerr);
+    cinfo.err = jpeg_std_error(&jerr);
 
-	jpeg_create_compress(&cinfo);
+    jpeg_create_compress(&cinfo);
 
-	fp = fopen(szFilename, "wb");
-	
-	if(fp == NULL)
-        	return;
+    fp = fopen(szFilename, "wb");
 
-	jpeg_stdio_dest(&cinfo, fp);
+    if(fp == NULL)
+        return;
 
-	cinfo.image_width = width;    // For width and height, in pixels 
-	cinfo.image_height = height;
-	cinfo.input_components = 3;   // In 1, said the gray level, if the color bitmap, is 3 
-	cinfo.in_color_space = JCS_RGB; //JCS_GRAYSCALE said the grayscale, JCS_RGB color image
+    jpeg_stdio_dest(&cinfo, fp);
 
-	jpeg_set_defaults(&cinfo); 
-	jpeg_set_quality (&cinfo, 80, 1);
+    cinfo.image_width = width;    // For width and height, in pixels 
+    cinfo.image_height = height;
+    cinfo.input_components = 3;   // In 1, said the gray level, if the color bitmap, is 3 
+    cinfo.in_color_space = JCS_RGB; //JCS_GRAYSCALE said the grayscale, JCS_RGB color image
 
-	jpeg_start_compress(&cinfo, 1);
+    jpeg_set_defaults(&cinfo); 
+    jpeg_set_quality (&cinfo, 80, 1);
 
-	
-	row_stride = cinfo.image_width * 3;//The number of bytes in each line, if not the index map, here need to be multiplied by 3
+    jpeg_start_compress(&cinfo, 1);
 
-	// For each row compression
-	while (cinfo.next_scanline <cinfo.image_height) {
-		row_pointer[0] = &(frame->data[0][cinfo.next_scanline * row_stride]);
-		jpeg_write_scanlines(&cinfo, row_pointer, 1);
-	}
+    row_stride = cinfo.image_width * 3;//The number of bytes in each line, if not the index map, here need to be multiplied by 3
 
-	jpeg_finish_compress(&cinfo);
-	jpeg_destroy_compress(&cinfo);
+    // For each row compression
+    while (cinfo.next_scanline <cinfo.image_height) {
+        row_pointer[0] = &(frame->data[0][cinfo.next_scanline * row_stride]);
+        jpeg_write_scanlines(&cinfo, row_pointer, 1);
+    }
 
-	fclose(fp);
-   
+    jpeg_finish_compress(&cinfo);
+    jpeg_destroy_compress(&cinfo);
+
+    fclose(fp);
 }
 
 static AVFrame *openImage(OutputStream *ost, const int dstWidth, const int dstHeight) {
@@ -467,22 +446,23 @@ static AVFrame *openImage(OutputStream *ost, const int dstWidth, const int dstHe
 
     pFrameYUV->height = dstHeight;
     pFrameYUV->width = dstWidth;
-    pFrameYUV->format = AV_PIX_FMT_YUV420P;
+    pFrameYUV->format = STREAM_PIX_FMT;
 
     pFrameBGR->height = height;
     pFrameBGR->width = width;
-    pFrameBGR->format = AV_PIX_FMT_YUV420P;
+    pFrameBGR->format = AV_PIX_FMT_BGR24;
 
-    int numBytesYUV = av_image_get_buffer_size(AV_PIX_FMT_YUV420P, width, height, 1);
+    int numBytesYUV = av_image_get_buffer_size(STREAM_PIX_FMT, width, height, 1);
 
-    av_log(NULL, AV_LOG_INFO, "numBytesYUV=", numBytesYUV, "\n");
+    av_log(NULL, AV_LOG_INFO, "numBytesYUV=%d\n", numBytesYUV);
     
     avpicture_fill((AVPicture *) pFrameBGR, mat.data, AV_PIX_FMT_BGR24, width, height);
   
     uint8_t* bufferYUV = (uint8_t *) av_malloc(numBytesYUV * sizeof (uint8_t));
-    avpicture_fill((AVPicture *) pFrameYUV, bufferYUV, AV_PIX_FMT_YUV420P, dstWidth, dstHeight);
+    avpicture_fill((AVPicture *) pFrameYUV, bufferYUV, STREAM_PIX_FMT, dstWidth, dstHeight);
 
-    writeJpg(pFrameYUV, width, height);
+    //writeJpg("writeBGR.jpg", pFrameBGR, width, height);
+    //writeJpg("writeYUV.jpg", pFrameYUV, dstWidth, dstHeight);
     
     // Initialise Software scaling context
     struct SwsContext *sws_ctx = sws_getContext(width,
@@ -490,8 +470,8 @@ static AVFrame *openImage(OutputStream *ost, const int dstWidth, const int dstHe
             AV_PIX_FMT_BGR24,
             dstWidth,
             dstHeight,
-            AV_PIX_FMT_YUV420P,
-            SWS_BILINEAR,
+            STREAM_PIX_FMT,
+            SCALE_FLAGS,
             NULL,
             NULL,
             NULL
@@ -500,12 +480,12 @@ static AVFrame *openImage(OutputStream *ost, const int dstWidth, const int dstHe
     // Convert the image from its BGR to YUV
     sws_scale(sws_ctx, (uint8_t const * const *) pFrameBGR->data,
             pFrameBGR->linesize, 0, height,
-            pFrameYUV->data, pFrameYUV->linesize);
+                pFrameYUV->data, pFrameYUV->linesize);
 
-    av_frame_free(&pFrameBGR);
-    //free(bufferYUV);
+    ost->frame->pts = ost->next_pts++;
     
-    //ost->frame->pts = ost->next_pts++;
+    //av_frame_free(&pFrameBGR);
+    //free(bufferYUV);
     
     //sws_freeContext(sws_ctx);
     
@@ -612,7 +592,9 @@ int main(int argc, char **argv) {
     }
     filename = argv[1];
     av_log_set_level(AV_LOG_DEBUG);
+    
     avformat_alloc_output_context2(&oc, NULL, "mp4", NULL);
+    
     if (!oc) {
         av_log(NULL, AV_LOG_ERROR, "Could not allocate output context.\n");
         return 1;
@@ -635,6 +617,7 @@ int main(int argc, char **argv) {
     strftime(creation_time, 40, "%Y-%m-%dT%H:%M:%SZ", tm_info);
     av_log(NULL, AV_LOG_INFO, "Setting creation time: %s\n", creation_time);
     av_dict_set(&oc->metadata, "creation_time", creation_time, 0);
+    av_dict_set(&oc->metadata, "creation_by", "NCTech Ltd", 0);
     add_video_stream(&video_st, oc, &video_codec, fmt->video_codec, width, height);
     add_camm_stream(&camm_st, oc);
     open_video_codec(oc, video_codec, &video_st);
@@ -656,13 +639,16 @@ int main(int argc, char **argv) {
     av_log(NULL, AV_LOG_INFO, "Writing the streams.\n");
     while (write_video || write_camm) {
         if (write_video
-                && (!write_camm || av_compare_ts(video_st.next_pts,
-                video_st.enc->time_base,
-                camm_st.next_pts,
-                camm_st.time_base) <= 0)) {
+                && (write_camm && av_compare_mod(video_st.next_pts, camm_st.next_pts, 10) == 0)) {
             write_video = !write_video_frame(oc, &video_st, width, height);
+            
+            av_log(NULL, AV_LOG_INFO, "Write image data %d.\n", write_video);
+            
+            if (!write_video)
+                break;
         } else {
             write_camm = !write_camm_packet_data(oc, &camm_st);
+            av_log(NULL, AV_LOG_INFO, "Write camm data %d.\n", write_camm);
         }
     }
     av_log(NULL, AV_LOG_INFO, "Wrote the streams.\n");
