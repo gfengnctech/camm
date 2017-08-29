@@ -354,34 +354,28 @@ static void open_video_codec(AVFormatContext *oc, AVCodec *codec,
 }
 
 static int seq = 0;
-static char * image_ext = ".jpg";
-static char * image_fmt = "%010d";
-static char * workdirectory = "./";
+static string  image_ext = ".jpg";
+static string image_fmt = "%010d";
+static string workdirectory = "./";
 
 static char * getSequenceFileName(int seq){
-    char* file_fmt = (char*)malloc(256 * sizeof(char));
-    strcpy(file_fmt, workdirectory);
-    strcat(file_fmt, image_fmt);
-    strcat(file_fmt, image_ext);
-    
+    string file_fmt = workdirectory + image_fmt + image_ext;
+
     char * imageFileName = (char*) malloc(256*sizeof(char));
-    sprintf(imageFileName, file_fmt, seq);
+    sprintf(imageFileName, file_fmt.c_str(), seq);
     
     if (access(imageFileName, F_OK) == -1) {
         av_log(NULL, AV_LOG_ERROR, "file doesn't exist %s\n", imageFileName);
         
-        free(file_fmt);
         free(imageFileName);
         
         return NULL;
     }
     
-    free(file_fmt);
-    
     return imageFileName;
 }
 
-static void writeJpg(char * szFilename, AVFrame* frame, int width, int height) {
+static void writeJpg(string szFilename, AVFrame* frame, int width, int height) {
     struct jpeg_compress_struct cinfo;
 
     struct jpeg_error_mgr jerr;
@@ -396,7 +390,7 @@ static void writeJpg(char * szFilename, AVFrame* frame, int width, int height) {
 
     jpeg_create_compress(&cinfo);
 
-    fp = fopen(szFilename, "wb");
+    fp = fopen(szFilename.c_str(), "wb");
 
     if(fp == NULL)
         return;
@@ -456,13 +450,24 @@ static AVFrame *openImage(OutputStream *ost, const int dstWidth, const int dstHe
 
     av_log(NULL, AV_LOG_INFO, "numBytesYUV=%d\n", numBytesYUV);
     
-    avpicture_fill((AVPicture *) pFrameBGR, mat.data, AV_PIX_FMT_BGR24, width, height);
-  
+    int ret = av_image_fill_arrays(pFrameBGR->data, pFrameBGR->linesize, mat.data, AV_PIX_FMT_BGR24, width, height, 1);
+    if(ret < 0) {
+        av_log(NULL, AV_LOG_ERROR, "pFrameBGRV=%d\n", ret);
+        return NULL;
+    }
+    
+    writeJpg("writeBGR.jpg", pFrameBGR, width, height);
+    
     uint8_t* bufferYUV = (uint8_t *) av_malloc(numBytesYUV * sizeof (uint8_t));
-    avpicture_fill((AVPicture *) pFrameYUV, bufferYUV, STREAM_PIX_FMT, dstWidth, dstHeight);
+    
+    ret = av_image_fill_arrays(pFrameYUV->data, pFrameYUV->linesize, bufferYUV, STREAM_PIX_FMT, dstWidth, dstHeight, 1);
 
-    //writeJpg("writeBGR.jpg", pFrameBGR, width, height);
-    //writeJpg("writeYUV.jpg", pFrameYUV, dstWidth, dstHeight);
+    if(ret < 0) {
+        av_log(NULL, AV_LOG_ERROR, "pFrameYUV=%d\n", ret);
+        return NULL;
+    }
+    
+    writeJpg("writeYUV.jpg", pFrameYUV, dstWidth, dstHeight);
     
     // Initialise Software scaling context
     struct SwsContext *sws_ctx = sws_getContext(width,
@@ -491,7 +496,6 @@ static AVFrame *openImage(OutputStream *ost, const int dstWidth, const int dstHe
     
     return pFrameYUV;
 }
-
 
 static int write_video_frame(AVFormatContext *oc, OutputStream *ost, const int dstWidth, const int dstHeight) {
     int ret;
@@ -551,6 +555,7 @@ static void close_stream(AVFormatContext *oc, OutputStream *ost) {
 
 int main(int argc, char **argv) {
     
+    
     OutputStream video_st = {0}, camm_st = {0};
     const char *filename;
     AVOutputFormat *fmt;
@@ -564,8 +569,8 @@ int main(int argc, char **argv) {
     
     char * imageFileName = getSequenceFileName(0);
     if (!imageFileName) {
-        av_log(NULL, AV_LOG_ERROR, "file doesn't exist", imageFileName, "\n");
-        return NULL;
+        av_log(NULL, AV_LOG_ERROR, "file doesn't exist %s\n", imageFileName);
+        return 1;
     }
     
     Mat frame = imread(imageFileName, 1);
