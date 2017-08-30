@@ -233,11 +233,6 @@ static int write_camm_packet_data(AVFormatContext *oc, OutputStream *ost) {
     int ret;
 
     av_init_packet(&pkt);
-    if (av_compare_ts(ost->next_pts, ost->time_base,
-            STREAM_DURATION, (AVRational) { 1, 1 }) >= 0) {
-        av_log(NULL, AV_LOG_INFO, "Finished writing camm stream.\n");
-        return 1;
-    }
             
     pkt.pts = ost->next_pts;
     pkt.flags = AV_PKT_FLAG_KEY;
@@ -707,6 +702,9 @@ int main(int argc, char **argv) {
         } else {
             write_camm = !write_camm_packet_data(oc, &camm_st);
             av_log(NULL, AV_LOG_INFO, "Write camm data %d.\n", write_camm);
+            
+            if (!write_camm)
+                break;
         }
     }
     av_log(NULL, AV_LOG_INFO, "Wrote the streams.\n");
