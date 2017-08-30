@@ -32,7 +32,9 @@ if(USE_BOOST)
         file(TO_CMAKE_PATH $ENV{BOOST_ROOT} BOOST_ROOT)
         set(BOOST_LIBRARYDIR ${BOOST_ROOT}/lib64-msvc-12.0)
     endif (MSVC)
-    find_package(Boost COMPONENTS chrono date_time filesystem system program_options thread timer  REQUIRED)
+        set(Boost_USE_STATIC_LIBS ON)
+        set(Boost_USE_STATIC_RUNTIME ON)
+        find_package(Boost COMPONENTS chrono date_time filesystem system program_options thread timer  REQUIRED)
 
 endif(USE_BOOST)
 
@@ -58,7 +60,7 @@ endif(USE_OPENCV)
 
 include_directories(include ${PROJECT_SOURCE_DIR})
 
-# LINK_DIRECTORIES(${BOOST_LIBRARYDIR})                   
+#LINK_DIRECTORIES(${BOOST_LIBRARYDIR})                   
     
 file(GLOB SOURCES "*.cpp")
 

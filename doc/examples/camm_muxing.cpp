@@ -52,10 +52,16 @@ extern "C" {
 #include <libavutil/frame.h>
 #include <libavutil/mem.h>
 
+#include <boost/program_options.hpp>
+#include <boost/format.hpp>
+#include <boost/filesystem.hpp>
+
 #include <jpeglib.h>
 
 using namespace cv;
 using namespace std;
+
+namespace po = boost::program_options;
 
 #define STREAM_DURATION   10.0
 #define STREAM_FRAME_RATE 1
@@ -93,6 +99,12 @@ using namespace std;
     #define av_ts2str(ts)  av_make_ts2str(ts).c_str()
 #endif // __cplusplus 
 
+static int seq = 0;
+static string  imageFileExtension = ".jpg";
+static string image_fmt = "%010d";
+static string workingDirectory = "./";
+static bool debug = false;
+    
 typedef struct OutputStream {
     AVStream *st;
     AVCodecContext *enc;
@@ -353,13 +365,8 @@ static void open_video_codec(AVFormatContext *oc, AVCodec *codec,
     }
 }
 
-static int seq = 0;
-static string  image_ext = ".jpg";
-static string image_fmt = "%010d";
-static string workdirectory = "./";
-
 static char * getSequenceFileName(int seq){
-    string file_fmt = workdirectory + image_fmt + image_ext;
+    string file_fmt = workingDirectory + image_fmt + imageFileExtension;
 
     char * imageFileName = (char*) malloc(256*sizeof(char));
     sprintf(imageFileName, file_fmt.c_str(), seq);
@@ -422,7 +429,7 @@ static void writeJpg(string szFilename, AVFrame* frame, int width, int height) {
 }
 
 static AVFrame *openImage(OutputStream *ost, const int dstWidth, const int dstHeight) {
-    char * imageFileName = getSequenceFileName(seq++);
+    char * imageFileName = getSequenceFileName(seq);
     
     if (!imageFileName)
         return NULL;
@@ -456,7 +463,8 @@ static AVFrame *openImage(OutputStream *ost, const int dstWidth, const int dstHe
         return NULL;
     }
     
-    writeJpg("writeBGR.jpg", pFrameBGR, width, height);
+    if (debug)
+        writeJpg("writeBGR-" + std::to_string(seq) + ".jpg", pFrameBGR, width, height);
     
     uint8_t* bufferYUV = (uint8_t *) av_malloc(numBytesYUV * sizeof (uint8_t));
     
@@ -467,7 +475,8 @@ static AVFrame *openImage(OutputStream *ost, const int dstWidth, const int dstHe
         return NULL;
     }
     
-    writeJpg("writeYUV.jpg", pFrameYUV, dstWidth, dstHeight);
+    if (debug)
+        writeJpg("writeYUV-" + std::to_string(seq) + ".jpg", pFrameYUV, dstWidth, dstHeight);
     
     // Initialise Software scaling context
     struct SwsContext *sws_ctx = sws_getContext(width,
@@ -488,6 +497,8 @@ static AVFrame *openImage(OutputStream *ost, const int dstWidth, const int dstHe
                 pFrameYUV->data, pFrameYUV->linesize);
 
     ost->frame->pts = ost->next_pts++;
+    
+    seq++;
     
     //av_frame_free(&pFrameBGR);
     //free(bufferYUV);
@@ -555,7 +566,6 @@ static void close_stream(AVFormatContext *oc, OutputStream *ost) {
 
 int main(int argc, char **argv) {
     
-    
     OutputStream video_st = {0}, camm_st = {0};
     const char *filename;
     AVOutputFormat *fmt;
@@ -566,6 +576,52 @@ int main(int argc, char **argv) {
     char creation_time[40];
     time_t timer;
     struct tm *tm_info;
+    
+    try {
+        po::options_description desc("Allowed options");
+	desc.add_options()
+		("help,h", "Help Screen")
+                ("file-name-format,f", po::value<std::string>()->default_value("%010d"), "Image file name format")
+        	("working-directory,d", po::value<std::string>()->default_value("./"), "Working directory")
+		("image-file-extension,i", po::value<std::string>()->default_value(".jpg"), "The type of image file including .")
+                ("debug", po::value<bool>()->default_value(false), "Print out the intermediate frames");
+
+        if (argc < 2) {
+            av_log(NULL, AV_LOG_INFO, "usage: %s output_file\nThis program generates synthetic camm data and video streams and\nmuxes them into a file named output_file.\n\n", argv[0]);
+        
+            std::cout << desc << std::endl;
+        
+            return 1;
+        }
+        
+        po::variables_map vm;
+	po::store(po::parse_command_line(argc, argv, desc), vm);
+	po::notify(vm);
+                
+	if (vm.count("help")) {
+            std::cout << desc << std::endl;
+            return 0;
+	} else {
+            if (vm.count("file-name-format")) {
+		image_fmt = vm["file-name-format"].as<std::string>();
+            }
+            
+            if (vm.count("working-directory")) {
+		workingDirectory = vm["working-directory"].as<std::string>();
+            }
+            
+            if (vm.count("image-file-extension")) {
+		imageFileExtension = vm["image-file-extension"].as<std::string>();
+            }
+            
+            if (vm.count("debug")) {
+		debug = vm["debug"].as<bool>();
+            }
+        }
+    } catch (const po::error &ex) {
+	std::cerr << ex.what() << std::endl;
+        return 2;
+    }
     
     char * imageFileName = getSequenceFileName(0);
     if (!imageFileName) {
@@ -591,10 +647,7 @@ int main(int argc, char **argv) {
 #endif
 
     av_register_all();
-    if (argc != 2) {
-        av_log(NULL, AV_LOG_INFO, "usage: %s output_file\nThis program generates synthetic camm data and video streams and\nmuxes them into a file named output_file.\n\n", argv[0]);
-        return 1;
-    }
+    
     filename = argv[1];
     av_log_set_level(AV_LOG_DEBUG);
     
@@ -644,7 +697,7 @@ int main(int argc, char **argv) {
     av_log(NULL, AV_LOG_INFO, "Writing the streams.\n");
     while (write_video || write_camm) {
         if (write_video
-                && (write_camm && av_compare_mod(video_st.next_pts, camm_st.next_pts, 10) == 0)) {
+                && (write_camm && av_compare_mod(video_st.next_pts, camm_st.next_pts, 10000000000) == 0)) {
             write_video = !write_video_frame(oc, &video_st, width, height);
             
             av_log(NULL, AV_LOG_INFO, "Write image data %d.\n", write_video);

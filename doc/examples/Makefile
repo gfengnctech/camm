@@ -1,5 +1,3 @@
-CC=g++
-
 # use pkg-config for getting CFLAGS and LDLIBS
 FFMPEG_LIBS=    libavdevice                        \
                 libavformat                        \
@@ -8,26 +6,12 @@ FFMPEG_LIBS=    libavdevice                        \
                 libswresample                      \
                 libswscale                         \
                 libavutil                          \
-		opencv				   \
-		
-	
-OpenCV_Libs=    /usr/local/share/OpenCV/3rdparty/lib/libippicv.a \
-                /usr/local/share/OpenCV/3rdparty/lib/libIlmImf.a  \
-		/usr/lib/x86_64-linux-gnu/libjpeg.a \
-		/usr/lib/x86_64-linux-gnu/libjasper.a \
-		/usr/local/share/OpenCV/3rdparty/lib/liblibwebp.a \
-		/usr/local/share/OpenCV/3rdparty/lib/liblibpng.a \
-		/usr/lib/x86_64-linux-gnu/libtiff.a \
-		/usr/lib/x86_64-linux-gnu/libjbig.a \
 
-
-CFLAGS += -Wall -g 
+CFLAGS += -Wall -g
 CFLAGS := $(shell pkg-config --cflags $(FFMPEG_LIBS)) $(CFLAGS)
-LDLIBS := $(shell pkg-config --libs $(FFMPEG_LIBS)) $(LDLIBS) $(OpenCV_Libs)
+LDLIBS := $(shell pkg-config --libs $(FFMPEG_LIBS)) $(LDLIBS)
 EXAMPLES=       avio_dir_cmd                       \
                 avio_reading                       \
-                camm_muxing                        \
-                camm_demuxing                      \
                 decode_audio                       \
                 decode_video                       \
                 demuxing_decoding                  \
@@ -44,7 +28,6 @@ EXAMPLES=       avio_dir_cmd                       \
                 scaling_video                      \
                 transcode_aac                      \
                 transcoding                        \
-
 
 OBJS=$(addsuffix .o,$(EXAMPLES))
 
