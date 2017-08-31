@@ -103,6 +103,7 @@ static int seq = 0;
 static string  imageFileExtension = ".jpg";
 static string image_fmt = "%010d";
 static string workingDirectory = "./";
+static bool noCammData = false;
 static bool debug = false;
     
 typedef struct OutputStream {
@@ -495,10 +496,12 @@ static AVFrame *openImage(OutputStream *ost, const int dstWidth, const int dstHe
     
     seq++;
     
-    //av_frame_free(&pFrameBGR);
+    mat.release();
+    
+    av_frame_free(&pFrameBGR);
     //free(bufferYUV);
     
-    //sws_freeContext(sws_ctx);
+    sws_freeContext(sws_ctx);
     
     return pFrameYUV;
 }
@@ -573,12 +576,13 @@ int main(int argc, char **argv) {
     struct tm *tm_info;
     
     try {
-        po::options_description desc("Allowed options");
+        po::options_description desc("Usage: <output video> options\nAllowed options");
 	desc.add_options()
 		("help,h", "Help Screen")
                 ("file-name-format,f", po::value<std::string>()->default_value("%010d"), "Image file name format")
         	("working-directory,d", po::value<std::string>()->default_value("./"), "Working directory")
 		("image-file-extension,i", po::value<std::string>()->default_value(".jpg"), "The type of image file including .")
+                ("no-camm-data", po::value<bool>()->default_value(false), "Do not put in camm data.")
                 ("debug", po::value<bool>()->default_value(false), "Print out the intermediate frames");
 
         if (argc < 2) {
@@ -607,6 +611,10 @@ int main(int argc, char **argv) {
             
             if (vm.count("image-file-extension")) {
 		imageFileExtension = vm["image-file-extension"].as<std::string>();
+            }
+            
+            if (vm.count("no-camm-data")) {
+                noCammData = vm["no-camm-data"].as<bool>();
             }
             
             if (vm.count("debug")) {
@@ -692,7 +700,7 @@ int main(int argc, char **argv) {
     av_log(NULL, AV_LOG_INFO, "Writing the streams.\n");
     while (write_video || write_camm) {
         if (write_video
-                && (write_camm && av_compare_mod(video_st.next_pts, camm_st.next_pts, 10000000000) == 0)) {
+                && (noCammData || (write_camm && av_compare_mod(video_st.next_pts, camm_st.next_pts, 10000000000) == 0))) {
             write_video = !write_video_frame(oc, &video_st, width, height);
             
             av_log(NULL, AV_LOG_INFO, "Write image data %d.\n", write_video);
