@@ -125,7 +125,7 @@ static const int metadata_type_sizes[] = {
     3 * sizeof (float),
     3 * sizeof (float),
     3 * sizeof (float),
-    3 * sizeof (float),
+    3 * sizeof (double),
     3 * sizeof (double) + sizeof (uint32_t) + 7 * sizeof (float),
     3 * sizeof (float)
 };
@@ -229,85 +229,105 @@ static uint32_t float_to_bytes(float f) {
 
 static int write_camm_packet_data(AVFormatContext *oc, OutputStream *ost) {
     uint16_t packet_type;
-    uint16_t *camm_data;
-    AVPacket pkt = {0};
-    int ret;
+  uint16_t *camm_data;
+  AVPacket pkt = { 0 };
+  int ret;
 
-    av_init_packet(&pkt);
-            
-    pkt.pts = ost->next_pts;
-    pkt.flags = AV_PKT_FLAG_KEY;
-    pkt.duration = 1;
-    pkt.dts = pkt.pts;
-    ost->next_pts += 1;
-    packet_type = ost->current_packet_type++ % 8;
-    pkt.size = 4 + metadata_type_sizes[packet_type];
-    memset(ost->tmp_data, 0, pkt.size);
-    pkt.data = (uint8_t*) ost->tmp_data;
-    AV_WL16(ost->tmp_data + 1, packet_type);
-    camm_data = ost->tmp_data + 2;
+  av_init_packet(&pkt);
 
-    srand((unsigned)time(NULL));
-    int random = (int)(rand())/10;
-    
-    AV_WL32(camm_data, /* X angle axis */ float_to_bytes(random * M_PI / 2));
-    AV_WL32(camm_data + 2, /* Y angle axis */ float_to_bytes(-M_PI / 2));
-    AV_WL32(camm_data + 4, /* Z angle axis */
-                    float_to_bytes(fmod(ost->current_packet_type * random * M_PI / 20,
-                    2 * M_PI) - M_PI));
+  pkt.pts = ost->next_pts;
+  pkt.flags = AV_PKT_FLAG_KEY;
+  pkt.duration = 1;
+  pkt.dts = pkt.pts;
+  ost->next_pts += 1;
+  packet_type = ost->current_packet_type++ % 8;
+  pkt.size = 4 + metadata_type_sizes[packet_type];
+  memset(ost->tmp_data, 0, pkt.size);
+  pkt.data = (uint8_t*) ost->tmp_data;
+  AV_WL16(ost->tmp_data + 1, packet_type);
+  camm_data = ost->tmp_data + 2;
+  switch (packet_type) {
+    case 0:
+      AV_WL32(camm_data,     /* X angle axis */ float_to_bytes(M_PI / 2));
+      AV_WL32(camm_data + 2, /* Y angle axis */ float_to_bytes(-M_PI / 2));
+      AV_WL32(camm_data + 4, /* Z angle axis */
+              float_to_bytes(fmod(ost->current_packet_type * M_PI / 20,
+                                  2 * M_PI) - M_PI));
+      break;
+    case 1:
+      AV_WL64(camm_data, /* Pixel exposure time in nanoseconds */ 500);
+      AV_WL64(camm_data + 4,
+              /* Rolling shutter skew time in nanoseconds */ 300);
+      break;
+    case 2:
+      AV_WL32(camm_data,     /* X gyro */ float_to_bytes(M_PI / 20));
+      AV_WL32(camm_data + 2, /* Y gyro */ float_to_bytes(2 * M_PI / 20));
+      AV_WL32(camm_data + 4, /* Z gyro */ float_to_bytes(3 * M_PI / 20));
+      break;
+    case 3:
+      AV_WL32(camm_data,     /* X acceleration */ float_to_bytes(0.1));
+      AV_WL32(camm_data + 2, /* Y acceleration */ float_to_bytes(0.2));
+      AV_WL32(camm_data + 4, /* Z acceleration */ float_to_bytes(0.3));
+      break;
+    case 4:
+      AV_WL32(camm_data,     /* X position */ float_to_bytes(10.23322));
+      AV_WL32(camm_data + 2, /* Y position */ float_to_bytes(20.58947));
+      AV_WL32(camm_data + 4, /* Z position */ float_to_bytes(-23155.13582));
+      break;
+    case 5:
+      AV_WL64(camm_data, /* latitude in degrees */
+              double_to_bytes(37.454356 + .001 * ost->current_packet_type));
+      camm_data = (uint16_t*) (((double*)camm_data) + 1);
+      AV_WL64(camm_data, /* longitude in degrees */
+              double_to_bytes(-122.167477 + .001 * ost->current_packet_type));
+      camm_data = (uint16_t*) (((double*)camm_data) + 1);
+      AV_WL64(camm_data, /* altitude in meters */ double_to_bytes(10.23545123156456));
+      break;
+    case 6:
+      AV_WL64(camm_data, /* time GPS epoch in seconds */
+              double_to_bytes(1500507374.825
+                              + ((double)1) / STREAM_FRAME_RATE));
+      camm_data = (uint16_t*) (((double*)camm_data) + 1);
+      AV_WL32(camm_data, /* GPS fix type */ 3);
+      camm_data = (uint16_t*) (((int32_t*)camm_data) + 1);
+      AV_WL64(camm_data, /* latitude in degrees */
+              double_to_bytes(37.454356 + .001 * ost->current_packet_type));
+      camm_data = (uint16_t*) (((double*)camm_data) + 1);
+      AV_WL64(camm_data, /* longitude in degrees */
+              double_to_bytes(-122.167477 + .001 * ost->current_packet_type));
+      camm_data = (uint16_t*) (((double*)camm_data) + 1);
+      AV_WL32(camm_data, /* altitude in meters */ float_to_bytes(1.00003));
+      camm_data = (uint16_t*) (((float*)camm_data) + 1);
+      AV_WL32(camm_data,
+              /* horizontal accuracy in meters */ float_to_bytes(7.5));
+      camm_data = (uint16_t*) (((float*)camm_data) + 1);
+      AV_WL32(camm_data,
+              /* vertical accuracy in meters */ float_to_bytes(10.5));
+      camm_data = (uint16_t*) (((float*)camm_data) + 1);
+      AV_WL32(camm_data,
+              /* vertical east velocity in m/s */ float_to_bytes(1.1));
+      camm_data = (uint16_t*) (((float*)camm_data) + 1);
+      AV_WL32(camm_data,
+              /* vertical north velocity in m/s */ float_to_bytes(1.1));
+      camm_data = (uint16_t*) (((float*)camm_data) + 1);
+      AV_WL32(camm_data, /* vertical up velocity in m/s */ float_to_bytes(0.35));
+      camm_data = (uint16_t*) (((float*)camm_data) + 1);
+      AV_WL32(camm_data, /* speed accuracy in m/s */ float_to_bytes(2.5));
+      break;
+    case 7:
+      AV_WL32(camm_data,     /* X magnetic field in micro teslas */ float_to_bytes(0.01));
+      AV_WL32(camm_data + 2, /* Y magnetic field in micro teslas */ float_to_bytes(0.08));
+      AV_WL32(camm_data + 4, /* Z magnetic field in micro teslas */ float_to_bytes(0.081));
+      break;
+    default:
+      break;
+  }
+  if ((ret = write_packet(oc, &ost->time_base, ost->st, &pkt)) < 0) {
+    av_log(NULL, AV_LOG_ERROR, "Error while writing camm data: %s\n", av_err2str(ret));
+    exit(1);
+  }
+  return 0;
 
-    AV_WL64(camm_data, /* Pixel exposure time in nanoseconds */ 500);
-    AV_WL64(camm_data + 4, /* Rolling shutter skew time in nanoseconds */ 300);
- 
-    AV_WL32(camm_data, /* X gyro */ float_to_bytes(M_PI / 20));
-    AV_WL32(camm_data + 2, /* Y gyro */ float_to_bytes(2 * random * M_PI / 20));
-    AV_WL32(camm_data + 4, /* Z gyro */ float_to_bytes(3 * random * M_PI / 20));
-
-    AV_WL32(camm_data, /* X acceleration */ float_to_bytes(0.1));
-    AV_WL32(camm_data + 2, /* Y acceleration */ float_to_bytes(0.2));
-    AV_WL32(camm_data + 4, /* Z acceleration */ float_to_bytes(0.3));
-
-    AV_WL32(camm_data, /* X position */ 0);
-    AV_WL32(camm_data + 2, /* Y position */ 0);
-    AV_WL32(camm_data + 4, /* Z position */ 0);
-
-    AV_WL32(camm_data, /* latitude in degrees */ float_to_bytes(37.454356 + .001 * ost->current_packet_type));
-    AV_WL32(camm_data + 2, /* longitude in degrees */ float_to_bytes(-122.167477 + .001 * ost->current_packet_type));
-    AV_WL32(camm_data + 4, /* altitude in meters */ 0);
-
-    AV_WL64(camm_data, /* time GPS epoch in seconds */ double_to_bytes(1500507374.825
-                    + ((double) 1) / STREAM_FRAME_RATE));
-    camm_data = (uint16_t*) (((double*) camm_data) + 1);
-    AV_WL32(camm_data, /* GPS fix type */ 0);
-    camm_data = (uint16_t*) (((int32_t*) camm_data) + 1);
-    AV_WL64(camm_data, /* latitude in degrees */ double_to_bytes(37.454356 + .001 * ost->current_packet_type));
-    camm_data = (uint16_t*) (((double*) camm_data) + 1);
-    AV_WL64(camm_data, /* longitude in degrees */ double_to_bytes(-122.167477 + .001 * ost->current_packet_type));
-    camm_data = (uint16_t*) (((double*) camm_data) + 1);
-    AV_WL32(camm_data, /* altitude in meters */ 0);
-    camm_data = (uint16_t*) (((float*) camm_data) + 1);
-    AV_WL32(camm_data, /* horizontal accuracy in meters */ float_to_bytes(7.5));
-    camm_data = (uint16_t*) (((float*) camm_data) + 1);
-    AV_WL32(camm_data, /* vertical accuracy in meters */ float_to_bytes(10.5));
-    camm_data = (uint16_t*) (((float*) camm_data) + 1);
-    AV_WL32(camm_data, /* vertical east velocity in m/s */ float_to_bytes(1.1));
-    camm_data = (uint16_t*) (((float*) camm_data) + 1);
-    AV_WL32(camm_data, /* vertical north velocity in m/s */ float_to_bytes(1.1));
-    camm_data = (uint16_t*) (((float*) camm_data) + 1);
-    AV_WL32(camm_data, /* vertical up velocity in m/s */ 0);
-    camm_data = (uint16_t*) (((float*) camm_data) + 1);
-    AV_WL32(camm_data, /* speed accuracy in m/s */ float_to_bytes(2.5));
-
-    AV_WL32(camm_data, /* X magnetic field in micro teslas */ float_to_bytes(0.01));
-    AV_WL32(camm_data + 2, /* Y magnetic field in micro teslas */ float_to_bytes(0.01));
-    AV_WL32(camm_data + 4, /* Z magnetic field in micro teslas */ float_to_bytes(0.01));
-
-    if ((ret = write_packet(oc, &ost->time_base, ost->st, &pkt)) < 0) {
-        av_log(NULL, AV_LOG_ERROR, "Error while writing camm data: %s\n", av_err2str(ret));
-        exit(1);
-    }
-           
-    return 0;
 }
 
 static AVFrame *alloc_picture(enum AVPixelFormat pix_fmt, const int width, const int height) {
@@ -564,6 +584,7 @@ static void close_stream(AVFormatContext *oc, OutputStream *ost) {
 
 int main(int argc, char **argv) {
     
+    
     OutputStream video_st = {0}, camm_st = {0};
     const char *filename;
     AVOutputFormat *fmt;
@@ -625,7 +646,7 @@ int main(int argc, char **argv) {
 	std::cerr << ex.what() << std::endl;
         return 2;
     }
-    
+
     char * imageFileName = getSequenceFileName(0);
     if (!imageFileName) {
         av_log(NULL, AV_LOG_ERROR, "file doesn't exist %s\n", imageFileName);
