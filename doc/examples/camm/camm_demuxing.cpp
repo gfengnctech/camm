@@ -29,12 +29,12 @@
 #include <unistd.h>
 
 #include <inttypes.h>
-extern "C"{
-    #include <libavutil/intreadwrite.h>
-    #include <libavutil/imgutils.h>
-    #include <libavutil/samplefmt.h>
-    #include <libavutil/timestamp.h>
-    #include <libavformat/avformat.h>
+extern "C" {
+#include <libavutil/intreadwrite.h>
+#include <libavutil/imgutils.h>
+#include <libavutil/samplefmt.h>
+#include <libavutil/timestamp.h>
+#include <libavformat/avformat.h>
 }
 #include <stdarg.h>
 
@@ -48,11 +48,11 @@ using namespace std;
 namespace po = boost::program_options;
 
 static int open_codec_context(int *stream_idx,
-                              AVCodecContext **dec_ctx,
-                              AVFormatContext *fmt_ctx,
-                              enum AVMediaType type,
-                              const char *src_filename,
-                              int find_decoder) {
+        AVCodecContext **dec_ctx,
+        AVFormatContext *fmt_ctx,
+        enum AVMediaType type,
+        const char *src_filename,
+        int find_decoder) {
     int ret, stream_index;
     AVStream *st;
     AVCodec *dec = NULL;
@@ -105,7 +105,7 @@ static void write_2_longs(FILE *f, void *data, const char *name1, const char *na
     fprintf(f, "%" PRId64 " ", AV_RL64(data));
     fputs(name2, f);
     fputs(": ", f);
-    fprintf(f, "%" PRId64 "\n", AV_RL64(((uint32_t*)data) + 2));
+    fprintf(f, "%" PRId64 "\n", AV_RL64(((uint32_t*) data) + 2));
 }
 
 static void write_3_floats(FILE *file, void *data, ...) {
@@ -117,7 +117,7 @@ static void write_3_floats(FILE *file, void *data, ...) {
     for (j = 0; j < 3; ++j) {
         fputs(va_arg(valist, const char*), file);
         fprintf(file, "[%d]: ", j);
-        i = AV_RL32(((uint32_t*)data) + j);
+        i = AV_RL32(((uint32_t*) data) + j);
         memcpy(&f, &i, 4);
         fprintf(file, "%f ", f);
     }
@@ -134,10 +134,9 @@ static void write_3_doubles(FILE *file, void *data, ...) {
     for (j = 0; j < 3; ++j) {
         fputs(va_arg(valist, const char*), file);
         fprintf(file, "[%d]: ", j);
-        i = AV_RL64(((uint32_t*)(data)) + 2*j);
+        i = AV_RL64(((uint32_t*) (data)) + 2 * j);
         memcpy(&f, &i, 8);
         fprintf(file, "%f ", f);
-        //data = ((uint32_t*)(data)) + 2;
     }
     fprintf(file, "\n");
     va_end(valist);
@@ -146,21 +145,21 @@ static void write_3_doubles(FILE *file, void *data, ...) {
 static void read_double(void **data, double *d) {
     uint64_t i = AV_RL64(*data);
     memcpy(d, &i, 8);
-    *data = ((uint32_t*)(*data)) + 2;
+    *data = ((uint32_t*) (*data)) + 2;
 }
 
 static void read_uint32(void **data, uint32_t *i) {
     *i = AV_RL32(*data);
-    *data = ((uint32_t*)(*data)) + 1;
+    *data = ((uint32_t*) (*data)) + 1;
 }
 
 static void read_float(void **data, float *f) {
     uint32_t i = AV_RL32(*data);
     memcpy(f, &i, 4);
-    *data = ((uint32_t*)(*data)) + 1;
+    *data = ((uint32_t*) (*data)) + 1;
 }
 
-int main (int argc, char **argv) {
+int main(int argc, char **argv) {
     int ret = 0;
     AVFormatContext *fmt_ctx = NULL;
     AVCodecContext *video_dec_ctx = NULL;
@@ -172,7 +171,7 @@ int main (int argc, char **argv) {
     string camm_dst_filename;
     FILE *video_dst_file = NULL;
     FILE *camm_dst_file = NULL;
-    uint8_t *video_dst_data[4] = {NULL};
+    uint8_t * video_dst_data[4] = {NULL};
     int video_dst_linesize[4];
     int video_dst_bufsize;
     int video_stream_idx = -1, camm_stream_idx = -1;
@@ -187,51 +186,51 @@ int main (int argc, char **argv) {
     double d1, d2, d3;
 
 #ifndef __STDC_IEC_559__
-  av_log(NULL, AV_LOG_INFO, stderr,
-       "Please ensure your compiler uses IEEE 754 \n"
-       "floating point representation. If so, you may safely comment out \n"
-       "this guard.\n");
-  exit(1);
+    av_log(NULL, AV_LOG_INFO, stderr,
+            "Please ensure your compiler uses IEEE 754 \n"
+            "floating point representation. If so, you may safely comment out \n"
+            "this guard.\n");
+    exit(1);
 #endif
 
     try {
         po::options_description desc("Allowed options");
         desc.add_options()
-		("help,h", "Help Screen")
+                ("help,h", "Help Screen")
                 ("demuxing-video,i", po::value<std::string>(), "The video for demuxing")
-        	("replicate-raw-video,r", po::value<std::string>(), "Raw video clip")
-		("camm-data,o", po::value<std::string>()->default_value("camm_data.txt"), "The camm data inside the video clip.");
-        
+                ("replicate-raw-video,r", po::value<std::string>(), "Raw video clip")
+                ("camm-data,o", po::value<std::string>()->default_value("camm_data.txt"), "The camm data inside the video clip.");
+
         po::variables_map vm;
-	po::store(po::parse_command_line(argc, argv, desc), vm);
-	po::notify(vm);
-                
-	if (vm.count("help")) {
+        po::store(po::parse_command_line(argc, argv, desc), vm);
+        po::notify(vm);
+
+        if (vm.count("help")) {
             std::cout << desc << std::endl;
             return 0;
-	} else {
+        } else {
             if (vm.count("demuxing-video")) {
-		src_filename = vm["demuxing-video"].as<std::string>();
+                src_filename = vm["demuxing-video"].as<std::string>();
             }
-                        
+
             if (vm.count("replicate-raw-video")) {
-		video_dst_filename = vm["replicate-raw-video"].as<std::string>();
+                video_dst_filename = vm["replicate-raw-video"].as<std::string>();
             }
-            
+
             if (vm.count("camm-data")) {
-		camm_dst_filename = vm["camm-data"].as<std::string>();
+                camm_dst_filename = vm["camm-data"].as<std::string>();
             }
         }
     } catch (const po::error &ex) {
-	cerr << ex.what() << endl;
+        cerr << ex.what() << endl;
         return 2;
     }
-    
+
     if (src_filename.length() == 0) {
         cout << "Must give a video clip for demuxing." << endl;
         exit(1);
     }
-    
+
     av_register_all();
     if (avformat_open_input(&fmt_ctx, src_filename.c_str(), NULL, NULL) < 0) {
         av_log(NULL, AV_LOG_ERROR, "Could not open source file %s\n", src_filename.c_str());
@@ -253,14 +252,14 @@ int main (int argc, char **argv) {
         height = video_dec_ctx->height;
         pix_fmt = video_dec_ctx->pix_fmt;
         ret = av_image_alloc(video_dst_data, video_dst_linesize,
-                             width, height, pix_fmt, 1);
+                width, height, pix_fmt, 1);
         if (ret < 0) {
             av_log(NULL, AV_LOG_ERROR, "Could not allocate raw video buffer\n");
             exit(1);
         }
         video_dst_bufsize = ret;
-   } 
-    
+    }
+
     if (open_codec_context(&camm_stream_idx, NULL, fmt_ctx, AVMEDIA_TYPE_DATA, src_filename.c_str(), 0 /* find_decoder */) >= 0) {
         camm_stream = fmt_ctx->streams[camm_stream_idx];
         camm_dst_file = fopen(camm_dst_filename.c_str(), "wb");
@@ -285,27 +284,27 @@ int main (int argc, char **argv) {
         if (pkt.stream_index == video_stream_idx) {
             if (!video_stream)
                 continue;
-            
+
             ret = avcodec_send_packet(video_dec_ctx, &pkt);
             if (ret == 0) {
                 while ((ret = avcodec_receive_frame(video_dec_ctx, frame)) == 0) {
                     if (frame->width != width || frame->height != height ||
-                        frame->format != pix_fmt) {
+                            frame->format != pix_fmt) {
                         av_log(NULL, AV_LOG_ERROR,
-                            "Error: Width, height and pixel format have to be "
-                            "constant in a rawvideo file, but the width, height or "
-                            "pixel format of the input video changed:\n"
-                            "old: width = %d, height = %d, format = %s\n"
-                            "new: width = %d, height = %d, format = %s\n",
-                            width, height, av_get_pix_fmt_name(pix_fmt),
-                            frame->width, frame->height,
-                            av_get_pix_fmt_name((enum AVPixelFormat)frame->format));
+                                "Error: Width, height and pixel format have to be "
+                                "constant in a rawvideo file, but the width, height or "
+                                "pixel format of the input video changed:\n"
+                                "old: width = %d, height = %d, format = %s\n"
+                                "new: width = %d, height = %d, format = %s\n",
+                                width, height, av_get_pix_fmt_name(pix_fmt),
+                                frame->width, frame->height,
+                                av_get_pix_fmt_name((enum AVPixelFormat)frame->format));
                         exit(1);
                     }
                     av_log(NULL, AV_LOG_INFO, "video_frame_n:%d coded_n:%d\n", video_frame_count++, frame->coded_picture_number);
                     av_image_copy(video_dst_data, video_dst_linesize,
-                                  (const uint8_t **)(frame->data), frame->linesize,
-                                  pix_fmt, width, height);
+                            (const uint8_t **) (frame->data), frame->linesize,
+                            pix_fmt, width, height);
                     fwrite(video_dst_data[0], 1, video_dst_bufsize, video_dst_file);
                 }
             }
@@ -314,63 +313,46 @@ int main (int argc, char **argv) {
             // Change this if you wish.
             if (pkt.size < 4) {
                 av_log(NULL, AV_LOG_ERROR,
-                       "camm packet size too small\n"
-                       "file contents are formatted incorrectly\n");
+                        "camm packet size too small\n"
+                        "file contents are formatted incorrectly\n");
                 exit(1);
             }
-            pkt_type = AV_RL16(((uint16_t*)pkt.data) + 1);
+            pkt_type = AV_RL16(((uint16_t*) pkt.data) + 1);
             av_log(NULL, AV_LOG_INFO, "camm_frame_n:%d pkt_size: %d pkt_type: %d\n", camm_frame_count++, pkt.size, pkt_type);
-            camm_data = (void*)(((uint32_t*)pkt.data) + 1);
+            camm_data = (void*) (((uint32_t*) pkt.data) + 1);
 
-            switch (pkt_type) {
-                case 0:
-                    write_3_floats(camm_dst_file, camm_data, "angle_axis", "angle_axis", "angle_axis");
-                    break;
-                case 1:
-                    write_2_longs(camm_dst_file, camm_data, "pixel_exposure_time", "rolling_shutter_skew_time");
-                    break;
-                case 2:
-                    write_3_floats(camm_dst_file, camm_data, "gyro", "gyro", "gyro");
-                    break;
-                case 3:
-                    write_3_floats(camm_dst_file, camm_data, "acc", "acc", "acc");
-                    break;
-                case 4:
-                    write_3_floats(camm_dst_file, camm_data, "position", "position", "position");
-                    break;
-                case 5:
-                    write_3_doubles(camm_dst_file, camm_data, "latitude", "longitude", "altitude");
-                    break;
-                case 6:
-                    read_double(&camm_data, &d1);
-                    read_uint32(&camm_data, &gps_fix_type);
-                    read_double(&camm_data, &d2);
-                    read_double(&camm_data, &d3);
-                    read_float(&camm_data, &f1);
-                    read_float(&camm_data, &f2);
-                    read_float(&camm_data, &f3);
-                    read_float(&camm_data, &f4);
-                    read_float(&camm_data, &f5);
-                    read_float(&camm_data, &f6);
-                    read_float(&camm_data, &f7);
-                    fprintf(camm_dst_file,
-                            "time_gps_epoch: %f gps_fix_type: %d latitude: %f "
-                            "longitude: %f altitude: %f "
-                            "horizontal_accuracy: %f vertical_accuracy: %f "
-                            "vertical_east: %f vertical_north: %f "
-                            "vertical_up: %f speed_accuracy: %f\n", d1,
-                            gps_fix_type, d2, d3, f1, f2, f3, f4, f5, f6, f7);
-                    break;
-                case 7:
-                    write_3_floats(camm_dst_file, camm_data, "magnetic_field", "magnetic_field", "magnetic_field");
-                    break;
-                default:
-                    av_log(NULL, AV_LOG_ERROR,
-                           "There is a camm packet with invalid type:%d\n",
-                           pkt_type);
-                    exit(1);
-            }
+            write_3_floats(camm_dst_file, camm_data, "angle_axis", "angle_axis", "angle_axis");
+            camm_data = (uint16_t*) (((float*) camm_data) + 3);
+            write_2_longs(camm_dst_file, camm_data, "pixel_exposure_time", "rolling_shutter_skew_time");
+            camm_data = (uint16_t*) (((long*) camm_data) + 2);;
+            write_3_floats(camm_dst_file, camm_data, "gyro", "gyro", "gyro");
+            camm_data = (uint16_t*) (((float*) camm_data) + 3);
+            write_3_floats(camm_dst_file, camm_data, "acc", "acc", "acc");
+            camm_data = (uint16_t*) (((float*) camm_data) + 3);
+            write_3_floats(camm_dst_file, camm_data, "position", "position", "position");
+            camm_data = (uint16_t*) (((float*) camm_data) + 3);
+            write_3_doubles(camm_dst_file, camm_data, "latitude", "longitude", "altitude");
+            camm_data = (uint16_t*) (((double*) camm_data) + 3);
+            read_double(&camm_data, &d1);
+            read_uint32(&camm_data, &gps_fix_type);
+            read_double(&camm_data, &d2);
+            read_double(&camm_data, &d3);
+            read_float(&camm_data, &f1);
+            read_float(&camm_data, &f2);
+            read_float(&camm_data, &f3);
+            read_float(&camm_data, &f4);
+            read_float(&camm_data, &f5);
+            read_float(&camm_data, &f6);
+            read_float(&camm_data, &f7);
+            fprintf(camm_dst_file,
+                    "time_gps_epoch: %f gps_fix_type: %d latitude: %f "
+                    "longitude: %f altitude: %f "
+                    "horizontal_accuracy: %f vertical_accuracy: %f "
+                    "vertical_east: %f vertical_north: %f "
+                    "vertical_up: %f speed_accuracy: %f\n", d1,
+                    gps_fix_type, d2, d3, f1, f2, f3, f4, f5, f6, f7);
 
+            write_3_floats(camm_dst_file, camm_data, "magnetic_field", "magnetic_field", "magnetic_field");
         } else {
             av_log(NULL, AV_LOG_ERROR, "There is a packet from an unrecognized stream.\n");
         }
