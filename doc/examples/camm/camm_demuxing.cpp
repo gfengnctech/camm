@@ -321,38 +321,54 @@ int main(int argc, char **argv) {
             av_log(NULL, AV_LOG_INFO, "camm_frame_n:%d pkt_size: %d pkt_type: %d\n", camm_frame_count++, pkt.size, pkt_type);
             camm_data = (void*) (((uint32_t*) pkt.data) + 1);
 
-            write_3_floats(camm_dst_file, camm_data, "angle_axis", "angle_axis", "angle_axis");
-            camm_data = (uint16_t*) (((float*) camm_data) + 3);
-            write_2_longs(camm_dst_file, camm_data, "pixel_exposure_time", "rolling_shutter_skew_time");
-            camm_data = (uint16_t*) (((long*) camm_data) + 2);;
-            write_3_floats(camm_dst_file, camm_data, "gyro", "gyro", "gyro");
-            camm_data = (uint16_t*) (((float*) camm_data) + 3);
-            write_3_floats(camm_dst_file, camm_data, "acc", "acc", "acc");
-            camm_data = (uint16_t*) (((float*) camm_data) + 3);
-            write_3_floats(camm_dst_file, camm_data, "position", "position", "position");
-            camm_data = (uint16_t*) (((float*) camm_data) + 3);
-            write_3_doubles(camm_dst_file, camm_data, "latitude", "longitude", "altitude");
-            camm_data = (uint16_t*) (((double*) camm_data) + 3);
-            read_double(&camm_data, &d1);
-            read_uint32(&camm_data, &gps_fix_type);
-            read_double(&camm_data, &d2);
-            read_double(&camm_data, &d3);
-            read_float(&camm_data, &f1);
-            read_float(&camm_data, &f2);
-            read_float(&camm_data, &f3);
-            read_float(&camm_data, &f4);
-            read_float(&camm_data, &f5);
-            read_float(&camm_data, &f6);
-            read_float(&camm_data, &f7);
-            fprintf(camm_dst_file,
-                    "time_gps_epoch: %f gps_fix_type: %d latitude: %f "
-                    "longitude: %f altitude: %f "
-                    "horizontal_accuracy: %f vertical_accuracy: %f "
-                    "vertical_east: %f vertical_north: %f "
-                    "vertical_up: %f speed_accuracy: %f\n", d1,
-                    gps_fix_type, d2, d3, f1, f2, f3, f4, f5, f6, f7);
-
-            write_3_floats(camm_dst_file, camm_data, "magnetic_field", "magnetic_field", "magnetic_field");
+             switch (pkt_type) {
+                case 0:
+                    write_3_floats(camm_dst_file, camm_data, "angle_axis", "angle_axis", "angle_axis");
+                    break;
+                case 1:
+                    write_2_longs(camm_dst_file, camm_data, "pixel_exposure_time", "rolling_shutter_skew_time");
+                    break;
+                case 2:
+                    write_3_floats(camm_dst_file, camm_data, "gyro", "gyro", "gyro");
+                    break;
+                case 3:
+                    write_3_floats(camm_dst_file, camm_data, "acc", "acc", "acc");
+                    break;
+                case 4:
+                    write_3_floats(camm_dst_file, camm_data, "position", "position", "position");
+                    break;
+                case 5:
+                    write_3_doubles(camm_dst_file, camm_data, "latitude", "longitude", "altitude");
+                    break;
+                case 6:
+                    read_double(&camm_data, &d1);
+                    read_uint32(&camm_data, &gps_fix_type);
+                    read_double(&camm_data, &d2);
+                    read_double(&camm_data, &d3);
+                    read_float(&camm_data, &f1);
+                    read_float(&camm_data, &f2);
+                    read_float(&camm_data, &f3);
+                    read_float(&camm_data, &f4);
+                    read_float(&camm_data, &f5);
+                    read_float(&camm_data, &f6);
+                    read_float(&camm_data, &f7);
+                    fprintf(camm_dst_file,
+                            "time_gps_epoch: %f gps_fix_type: %d latitude: %f "
+                            "longitude: %f altitude: %f "
+                            "horizontal_accuracy: %f vertical_accuracy: %f "
+                            "vertical_east: %f vertical_north: %f "
+                            "vertical_up: %f speed_accuracy: %f\n", d1,
+                            gps_fix_type, d2, d3, f1, f2, f3, f4, f5, f6, f7);
+                    break;
+                case 7:
+                    write_3_floats(camm_dst_file, camm_data, "magnetic_field", "magnetic_field", "magnetic_field");
+                    break;
+                default:
+                    av_log(NULL, AV_LOG_ERROR,
+                           "There is a camm packet with invalid type:%d\n",
+                           pkt_type);
+                    exit(1);
+            }
         } else {
             av_log(NULL, AV_LOG_ERROR, "There is a packet from an unrecognized stream.\n");
         }
